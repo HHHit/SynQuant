@@ -38,27 +38,23 @@ public class paraP3D {
 	/*read mu from lookup table*/
 	public double[][] InitialMu(){
 		double [][] matrix = new double[max_size][max_size];
-		matrix = InitialMuSigma("C:\\Users\\Congchao\\Desktop\\Probjects_Google_Drive\\SynQuant3D_\\src\\main\\resources\\mu.txt");
+		matrix = InitialMuSigma("mu.txt");
         return matrix;
 	}
 	/*read sigma from lookup table*/
 	public double[][] InitialSigma(){
 		double [][] matrix = new double[max_size][max_size];
-		matrix = InitialMuSigma("C:\\Users\\Congchao\\Desktop\\Probjects_Google_Drive\\SynQuant3D_\\src\\main\\resources\\sigma.txt");
+		matrix = InitialMuSigma("sigma.txt");
         return matrix;                             
 	}
 	/*read sigma and mu from txt file*/
 	public double[][] InitialMuSigma(String Filepath){
+		InputStream input = getClass().getResourceAsStream(Filepath);
 		double [][] matrix = new double[max_size][max_size];
         BufferedReader br = null;
         int line = 0;
 		// read
-		try {
-			br  = new BufferedReader(new FileReader(new File(Filepath)));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		br  = new BufferedReader(new InputStreamReader(input));
 		
 		String str = null;
 		// read by line
