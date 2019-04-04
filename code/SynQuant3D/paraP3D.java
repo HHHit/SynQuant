@@ -1,3 +1,5 @@
+import org.apache.commons.math3.distribution.NormalDistribution;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -13,7 +15,7 @@ public class paraP3D {
     public double thrSig = 0.05;  // corrected significance threshold, this is not used in fact
     public int thr0;
     public int thr1;
-    public int thrg=5;  // step size
+    public int thrg=1;  // step size
     public double thrZ = NormInv(thrSig,0,1);
     public int min_size = 10;  // !! minimun synapse size in pixels, should be image specific
     public int max_size = 500; // !! maxmum synapse size in pixels, should be image specific
@@ -21,7 +23,7 @@ public class paraP3D {
     public int max_ratio = 2;  //2
     public int conn_direc = 26;  // define neighbors 3*3*3 (or maybe 6)
 	public double minfill = 0.25;//0.25; //for convex shape of synapse
-	public double maxWHratio = 2; //remove too long or too short regions, spatial-ratio of detected synapse
+	public double maxWHratio = 100; //remove too long or too short regions, spatial-ratio of detected synapse
 	public double [][] mu = InitialMu();//look up table for Mu
 	public double [][] sigma=InitialSigma();//look up table for sigma
 	public double fdr;
@@ -49,12 +51,19 @@ public class paraP3D {
 	}
 	/*read sigma and mu from txt file*/
 	public double[][] InitialMuSigma(String Filepath){
-		InputStream input = getClass().getResourceAsStream(Filepath);
+		// get the path of the file in the resources folder
+		ClassLoader classLoader = getClass().getClassLoader();
+		File file = new File(classLoader.getResource(Filepath).getFile());
 		double [][] matrix = new double[max_size][max_size];
         BufferedReader br = null;
         int line = 0;
 		// read
-		br  = new BufferedReader(new InputStreamReader(input));
+		try {
+			br  = new BufferedReader(new FileReader(file));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		String str = null;
 		// read by line
@@ -84,6 +93,130 @@ public class paraP3D {
         return matrix;                             
 		
 	}
+
+    public double CalMu(int M, int N, int sps){
+        /**
+         * sps defines the number of sampling points
+         */
+        double m = (double) M;
+        double n = (double) N;
+        double min1 = 1.0/(m+n+1);
+        double min2 = (n+1)/(m+n+1);
+        double height1 = 0;
+        double height2 = 0;
+        int sps1 = (int) Math.round(sps/(m+n)*n);
+        int sps2 = (int) Math.round(sps/(m+n)*m);
+        double interval1 = (n - 1) / (m + n + 1) / (sps1 - 1);
+        double interval2 = (m-1) / (m + n + 1) / (sps2 - 1);
+        double muoutput;
+        NormalDistribution distribution = new NormalDistribution();
+        for (int i=0; i<sps1;i++){
+            if (i==0 || i==(sps1-1)){
+                height1 += integralMu(distribution,m,n,min1+i*interval1,1);
+            }
+            else{
+                height1 += 2*integralMu(distribution,m,n,min1+i*interval1,1);
+            }
+        }
+
+        for (int j=0;j<sps2;j++){
+            if (j==0||j==(sps2 - 1)){
+                height2 += integralMu(distribution,m,n,min2+j*interval2,2);
+            }
+            else {
+                height2 += 2*integralMu(distribution,m,n,min2+j*interval2,2);
+            }
+        }
+        muoutput = (height2*interval2 - height1*interval1)/2;
+        return muoutput;
+    }
+    private double integralMu(NormalDistribution distribution, double m, double n, double u, int k){
+        /**
+         * k is used to define first or second part of the integral
+         */
+        double muoutput = 0;
+        if (k == 1){
+            muoutput = distribution.inverseCumulativeProbability(u);
+            muoutput = (m+n)/n*muoutput;
+        }
+        else {
+            muoutput = distribution.inverseCumulativeProbability(u);
+            muoutput = (m+n)/m*muoutput;
+        }
+        return muoutput;
+    }
+    public double CalSigma(int M, int N, int sps){
+        double m = (double) M;
+        double n = (double) N;
+        double min1 = 1.0/(m+n+1);
+        double min2 = (n+1)/(m+n+1);
+        double height1 = 0;
+        double height2 = 0;
+        double height3 = 0;
+        int sps1 = (int) Math.round(sps/(m+n)*n);
+        int sps2 = (int) Math.round(sps/(m+n)*m);
+        double interval1 = (n - 1) / (m + n + 1) / (sps1 - 1);
+        double interval2 = (m-1) / (m + n + 1) / (sps2 - 1);
+        double sigmaoutput;
+        NormalDistribution distribution = new NormalDistribution();
+        for (int i=0;i<(sps1-1);i++){
+            for (int j=i; j<(sps1-1);j++){
+                height1 += 1.0/4*(integralSigma(distribution,m,n,min1+i*interval1, min1+j*interval1,1));
+                height1 += 1.0/4*(integralSigma(distribution,m,n,min1+(i+1)*interval1, min1+j*interval1,1));
+                height1 += 1.0/4*(integralSigma(distribution,m,n,min1+i*interval1, min1+(j+1)*interval1,1));
+                height1 += 1.0/4*(integralSigma(distribution,m,n,min1+(i+1)*interval1, min1+(j+1)*interval1,1));
+            }
+        }
+        for (int i=0;i<(sps1-1);i++){
+            for(int j=0;j<(sps2-1);j++){
+                height2 += 1.0/4*(integralSigma(distribution,m,n,min1+i*interval1, min2+j*interval2,2));
+                height2 += 1.0/4*(integralSigma(distribution,m,n,min1+(i+1)*interval1, min2+j*interval2,2));
+                height2 += 1.0/4*(integralSigma(distribution,m,n,min1+i*interval1, min2+(j+1)*interval2,2));
+                height2 += 1.0/4*(integralSigma(distribution,m,n,min1+(i+1)*interval1, min2+(j+1)*interval2,2));
+            }
+        }
+        for (int i=0;i<(sps2-1);i++){
+            for (int j=i;j<(sps2-1);j++){
+                height3 += 1.0/4*(integralSigma(distribution,m,n,min2+i*interval2, min2+j*interval2,3));
+                height3 += 1.0/4*(integralSigma(distribution,m,n,min2+(i+1)*interval2, min2+j*interval2,3));
+                height3 += 1.0/4*(integralSigma(distribution,m,n,min2+i*interval2, min2+(j+1)*interval2,3));
+                height3 += 1.0/4*(integralSigma(distribution,m,n,min2+(i+1)*interval2, min2+(j+1)*interval2,3));
+
+            }
+        }
+        sigmaoutput = (height1 *interval1 * interval1 - height2*interval1*interval2 + height3*interval2*interval2) / (M+N);
+        sigmaoutput = Math.sqrt(sigmaoutput);
+        return sigmaoutput;
+    }
+    private double integralSigma(NormalDistribution distribution, double m, double n, double x,double y, int k){
+        /**
+         * refer to the formula of variance in the SynQuant paper
+         */
+        double sigmaoutput = 0;
+        double denom1 ;
+        double denom2 ;
+        denom1 = CalNormalIntensity(distribution.inverseCumulativeProbability(x));
+        denom2 = CalNormalIntensity(distribution.inverseCumulativeProbability(y));
+        if (k == 1){
+            sigmaoutput = (((((2 * (m + n)) / n) * (m + n)) / n) * x * (1 - y)) / denom1 / denom2;
+        }
+        else {
+            if (k==2){
+                sigmaoutput = (((((2 * (m + n)) / n) * (m + n)) / m) * x * (1 - y)) / denom1 / denom2;
+            }
+            else {
+                sigmaoutput = (((((2 * (m + n)) / m) * (m + n)) / m) * x * (1 - y)) / denom1 / denom2;
+            }
+        }
+        return sigmaoutput;
+    }
+    private double CalNormalIntensity(double x){
+        double p;
+        double PI=3.141592653589793;
+        p = Math.exp(-x*x/2)/Math.sqrt(2*PI);
+        return p;
+    }
+
 	/*norm inverse, only use here, in the other file use the function zTop and pToz in BasicMath*/
 	public double NormInv(double p, double mu, double sigma) {
 		/**
