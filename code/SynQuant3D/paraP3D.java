@@ -9,26 +9,26 @@ import java.lang.*;
 
 //parameter initialization, mainly for synapse's prior knowledge
 public class paraP3D {
-    public String trans = "anscombe"; // not used here, for anscombe transform
-    public String test = "order"; // order statistics is used here
-    public String correct = "bonf"; // bonferroni correction
-    public double thrSig = 0.05;  // corrected significance threshold, this is not used in fact
-    public int thr0;
-    public int thr1;
-    public int thrg=1;  // step size
-    public double thrZ = NormInv(thrSig,0,1);
-    public int min_size = 10;  // !! minimun synapse size in pixels, should be image specific
-    public int max_size = 500; // !! maxmum synapse size in pixels, should be image specific
-    public int minIntensity = 50; 
-    public int max_ratio = 2;  //2
-    public int conn_direc = 26;  // define neighbors 3*3*3 (or maybe 6)
+	public String trans = "anscombe"; // not used here, for anscombe transform
+	public String test = "order"; // order statistics is used here
+	public String correct = "bonf"; // bonferroni correction
+	public double thrSig = 0.05;  // corrected significance threshold, this is not used in fact
+	public int thr0;
+	public int thr1;
+	public int thrg=1;  // step size
+	public double thrZ = NormInv(thrSig,0,1);
+	public int min_size = 10;  // !! minimun synapse size in pixels, should be image specific
+	public int max_size = 500; // !! maxmum synapse size in pixels, should be image specific
+	public int minIntensity = 50; 
+	public int max_ratio = 2;  //2
+	public int conn_direc = 26;  // define neighbors 3*3*3 (or maybe 6)
 	public double minfill = 0.25;//0.25; //for convex shape of synapse
 	public double maxWHratio = 100; //remove too long or too short regions, spatial-ratio of detected synapse
 	public double [][] mu = InitialMu();//look up table for Mu
 	public double [][] sigma=InitialSigma();//look up table for sigma
 	public double fdr;
 	public boolean fdr_den = true;
-	
+
 	public paraP3D(double InputFdr, int Lowthreshold, int Highthreshold,int MinSize,int MaxSize){
 		fdr = InputFdr;
 		thr0 = Math.max(minIntensity,Lowthreshold);
@@ -36,27 +36,34 @@ public class paraP3D {
 		min_size = MinSize;
 		max_size = MaxSize;
 	}
-	
+
 	/*read mu from lookup table*/
 	public double[][] InitialMu(){
 		double [][] matrix = new double[max_size][max_size];
 		matrix = InitialMuSigma("mu.txt");
-        return matrix;
+	return matrix;
 	}
 	/*read sigma from lookup table*/
 	public double[][] InitialSigma(){
 		double [][] matrix = new double[max_size][max_size];
 		matrix = InitialMuSigma("sigma.txt");
-        return matrix;                             
+	return matrix;                             
 	}
 	/*read sigma and mu from txt file*/
 	public double[][] InitialMuSigma(String Filepath){
+		/** Lines below are for JAR packing 
+		* InputStream input = getClass().getResourceAsStream(Filepath);
+		* double [][] matrix = new double[max_size][max_size];
+        * BufferedReader br = null;
+        * int line = 0;
+		* br  = new BufferedReader(new InputStreamReader(input));
+		*/
 		// get the path of the file in the resources folder
 		ClassLoader classLoader = getClass().getClassLoader();
 		File file = new File(classLoader.getResource(Filepath).getFile());
 		double [][] matrix = new double[max_size][max_size];
-        BufferedReader br = null;
-        int line = 0;
+	BufferedReader br = null;
+	int line = 0;
 		// read
 		try {
 			br  = new BufferedReader(new FileReader(file));
@@ -64,16 +71,16 @@ public class paraP3D {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		String str = null;
 		// read by line
 		try {
 			while((str=br.readLine())!=null){
-			
+
 				String[] Linemu = str.split(",");
 			    for (int i = 0; i < Linemu.length; i++) {  
-			    	matrix[line][i] = Double.parseDouble(Linemu[i]);  
-			        //System.out.println(matrix[line][i]);  
+				matrix[line][i] = Double.parseDouble(Linemu[i]);  
+				//System.out.println(matrix[line][i]);  
 			    }
 			    line++;
 			}
@@ -90,8 +97,8 @@ public class paraP3D {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-        return matrix;                             
-		
+	return matrix;                             
+
 	}
 
     public double CalMu(int M, int N, int sps){
